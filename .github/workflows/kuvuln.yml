@@ -145,7 +145,7 @@ jobs:
       - name: Checkout KuVuln engine
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: bleon-ethical/kuvuln
+          repository: opensecuritycollective/kuvuln
           ref: main
           path: kuvuln-engine
           fetch-depth: 1
@@ -198,7 +198,7 @@ jobs:
             cp kuvuln-engine/kuvuln-config.json "$KUVULN_CONFIG"
           fi
           if [ ! -f "$KUVULN_CONFIG" ]; then
-            curl -sSfL "https://raw.githubusercontent.com/bleon-ethical/kuvuln/main/kuvuln-config.json" -o "$KUVULN_CONFIG" || true
+            curl -sSfL "https://raw.githubusercontent.com/opensecuritycollective/kuvuln/main/kuvuln-config.json" -o "$KUVULN_CONFIG" || true
           fi
           if [ ! -f "$KUVULN_CONFIG" ]; then
             echo '{}' > "$KUVULN_CONFIG"
