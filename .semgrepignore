@@ -1,0 +1,7 @@
+tests/fixtures/
+kuvuln-rendered/
+kuvuln-results/
+kuvuln-out/
+vendor/
+node_modules/
+.git/

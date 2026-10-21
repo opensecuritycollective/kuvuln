@@ -1,0 +1,5 @@
+%{
+  "phoenix": {:hex, :phoenix, "1.7.14", "abc", [:mix], [], "hexpm"},
+  "jason": {:hex, :jason, "1.4.4", "def", [:mix], [], "hexpm"},
+  "local_dep": {:path, "deps/local_dep", "abc", [:mix], [], "hexpm"},
+}

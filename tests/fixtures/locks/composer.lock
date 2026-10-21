@@ -1,0 +1,18 @@
+{
+  "_readme": ["This file locks the dependencies"],
+  "content-hash": "abc",
+  "packages": [
+    {
+      "name": "monolog/monolog",
+      "version": "2.9.3",
+      "license": ["MIT"]
+    }
+  ],
+  "packages-dev": [
+    {
+      "name": "phpunit/phpunit",
+      "version": "10.5.0",
+      "license": ["BSD-3-Clause"]
+    }
+  ]
+}

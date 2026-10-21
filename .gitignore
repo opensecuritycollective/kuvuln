@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.kuvuln-baseline.json
+kuvuln-out/
+kuvuln-results/
+kuvuln-rendered/
+.coverage
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

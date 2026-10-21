@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Trivy",
+          "version": "0.76.0",
+          "informationUri": "https://github.com/aquasecurity/trivy",
+          "rules": [
+            {
+              "id": "CVE-2021-23337",
+              "name": "CVE-2021-23337",
+              "shortDescription": {"text": "lodash is vulnerable to command injection"},
+              "fullDescription": {"text": "lodash command injection via template."},
+              "helpUri": "https://avd.aquasec.com/nvd/cve-2021-23337",
+              "defaultConfiguration": {"level": "error"},
+              "properties": {
+                "tags": ["vulnerability", "security", "CVE-2021-23337"],
+                "security-severity": "9.1"
+              }
+            },
+            {
+              "id": "KSV001",
+              "name": "Privileged container",
+              "shortDescription": {"text": "Container should not be allowed to run in privileged mode"},
+              "helpUri": "https://kubernetes.io/docs/concepts/security/pod-security-standards/",
+              "defaultConfiguration": {"level": "error"},
+              "properties": {"tags": ["misconfiguration", "security", "kubernetes"]}
+            },
+            {
+              "id": "aws-access-key-id",
+              "name": "AWS Access Key ID",
+              "shortDescription": {"text": "AWS Access Key ID"},
+              "defaultConfiguration": {"level": "error"},
+              "properties": {"tags": ["secret", "security"]}
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {"text": "Package: lodash\nInstalled Version: 4.17.20\nFixed Version: 4.17.21\nVulnerability: command injection"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "package-lock.json"},
+                "region": {"startLine": 10, "endLine": 10}
+              }
+            }
+          ],
+          "properties": {
+            "pkgName": "lodash",
+            "installedVersion": "4.17.20",
+            "fixedVersion": "4.17.21"
+          }
+        },
+        {
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {"text": "Container 'app' should not be allowed to run in privileged mode"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "tests/fixtures/k8s/insecure-deployment.yaml"},
+                "region": {"startLine": 22, "endLine": 22}
+              }
+            }
+          ]
+        },
+        {
+          "ruleIndex": 2,
+          "level": "error",
+          "message": {"text": "Artifact: insecure-deployment.yaml\nType: AWS Access Key\nMatched Part: AKIAIOSFODNN7EXAMPLE"},
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {"uri": "tests/fixtures/k8s/insecure-deployment.yaml"},
+                "region": {"startLine": 30}
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

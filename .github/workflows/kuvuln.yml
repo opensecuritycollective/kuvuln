@@ -1,78 +1,413 @@
-name: KuVuln Bot
+name: KuVuln
 
 on:
+  workflow_call:
+    inputs:
+      repository:
+        description: "Repository to scan (owner/name)"
+        required: false
+        type: string
+        default: ""
+      ref:
+        description: "Git ref to scan"
+        required: false
+        type: string
+        default: ""
+      config_path:
+        description: "Path to kuvuln-config.json inside the scanned repository"
+        required: false
+        type: string
+        default: "kuvuln-config.json"
+      fail_on:
+        description: "Override fail_on_severity"
+        required: false
+        type: string
+        default: ""
+      offline:
+        description: "Run without network access"
+        required: false
+        type: boolean
+        default: false
+      skip_container:
+        description: "Skip container image scanning"
+        required: false
+        type: boolean
+        default: false
   push:
-    branches: [ "main", "develop" ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ "main" ]
+    branches: [main, master]
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Repository to scan (owner/name). Defaults to this repository."
+        required: false
+        type: string
+        default: ""
+      ref:
+        description: "Git ref to scan. Defaults to the default branch."
+        required: false
+        type: string
+        default: ""
+      config_path:
+        description: "Path to kuvuln-config.json"
+        required: false
+        type: string
+        default: "kuvuln-config.json"
+      fail_on:
+        description: "Override fail_on_severity"
+        type: choice
+        options: ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]
+        default: HIGH
+      offline:
+        description: "Run without network access"
+        type: boolean
+        default: false
+      skip_container:
+        description: "Skip container image scanning"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kuvuln-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  KUVULN_REPOSITORY: ${{ inputs.repository || github.repository }}
+  KUVULN_REF: ${{ inputs.ref || github.ref }}
+  KUVULN_CONFIG: ${{ inputs.config_path || 'kuvuln-config.json' }}
+  KUVULN_RAW: ${{ runner.temp }}/kuvuln-results
+  KUVULN_OUT: ${{ runner.temp }}/kuvuln-out
+  KUVULN_RENDERED: ${{ runner.temp }}/kuvuln-rendered
+  TRIVY_VERSION: "0.76.0"
+  GITLEAKS_VERSION: "8.30.1"
+  KUBESCAPE_VERSION: "4.0.16"
+  KUBE_LINTER_VERSION: "0.8.3"
+  KUSTOMIZE_VERSION: "5.8.3"
+  HELM_VERSION: "3.22.1"
+  GOSEC_VERSION: "2.29.0"
+  GOVULNCHECK_VERSION: "1.9.0"
+  SEMGREP_VERSION: "1.182.0"
+  CHECKOV_VERSION: "3.3.29"
+  ZIZMOR_VERSION: "1.31.1"
 
 jobs:
-  kuvuln_comprehensive_scan:
-    name: Full Spectrum Security
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        continue-on-error: true
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: never
+          deny-licenses: AGPL-3.0-only,AGPL-3.0-or-later,SSPL-1.0,BUSL-1.1
+
+  scan:
+    name: KuVuln comprehensive scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: read
       security-events: write
       pull-requests: write
-
+      actions: read
     steps:
-      - name: 1. Checkout Full History
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          repository: ${{ env.KUVULN_REPOSITORY }}
+          ref: ${{ env.KUVULN_REF }}
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: 2. Secret Detection (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.25"
+          cache: false
+
+      - name: Cache KuVuln advisories
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/kuvuln
+          key: kuvuln-cache-${{ github.run_id }}
+          restore-keys: kuvuln-cache-
+
+      - name: Cache Go modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-mod-
+
+      - name: Workflow options
+        id: options
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          {
+            echo "fail_on=${{ inputs.fail_on }}"
+            echo "offline=${{ inputs.offline }}"
+            echo "skip_container=${{ inputs.skip_container }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install KuVuln
+        shell: bash
+        run: pip install --disable-pip-version-check --no-cache-dir .
+
+      - name: Ensure configuration
+        shell: bash
+        run: |
+          if [ ! -f "$KUVULN_CONFIG" ]; then
+            curl -sSfL "https://raw.githubusercontent.com/bleon-ethical/kuvuln/main/kuvuln-config.json" -o "$KUVULN_CONFIG" || true
+          fi
+          if [ ! -f "$KUVULN_CONFIG" ]; then
+            echo '{}' > "$KUVULN_CONFIG"
+          fi
+
+      - name: Install scanning tools
+        shell: bash
+        env:
+          TRIVY_VERSION: ${{ env.TRIVY_VERSION }}
+          GITLEAKS_VERSION: ${{ env.GITLEAKS_VERSION }}
+          KUBE_LINTER_VERSION: ${{ env.KUBE_LINTER_VERSION }}
+          KUSTOMIZE_VERSION: ${{ env.KUSTOMIZE_VERSION }}
+          HELM_VERSION: ${{ env.HELM_VERSION }}
+          GOSEC_VERSION: ${{ env.GOSESEC_VERSION }}
+          GOVULNCHECK_VERSION: ${{ env.GOVULNCHECK_VERSION }}
+          SEMGREP_VERSION: ${{ env.SEMGREP_VERSION }}
+          CHECKOV_VERSION: ${{ env.CHECKOV_VERSION }}
+          ZIZMOR_VERSION: ${{ env.ZIZMOR_VERSION }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$KUVULN_RAW/data"
+
+          # Trivy - checksum verified
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" -o /tmp/trivy.tar.gz
+          echo "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7  /tmp/trivy.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/trivy.tar.gz -C /tmp trivy
+          sudo mv /tmp/trivy /usr/local/bin/trivy
+
+          # Gitleaks - checksum verified
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o /tmp/gitleaks.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+
+          # Helm - checksum verified
+          curl -sSfL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o /tmp/helm.tar.gz
+          echo "896cf63684a42a723d61c980369d6e588330927deb13676ca0d85006dd6da0ea  /tmp/helm.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/helm.tar.gz -C /tmp linux-amd64/helm
+          sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
+
+          # Go tools installed through the Go module proxy (sumdb verified)
+          go install sigs.k8s.io/kustomize/kustomize/v5@v${KUSTOMIZE_VERSION}
+          go install golang.stackrox.io/kube-linter/cmd/kube-linter@v${KUBE_LINTER_VERSION}
+          go install github.com/securego/gosec/v2/cmd/gosec@v${GOSEC_VERSION}
+          go install golang.org/x/vuln/cmd/govulncheck@v${GOVULNCHECK_VERSION}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+          # Python scanners
+          pip install --disable-pip-version-check --no-cache-dir \
+            "semgrep==${SEMGREP_VERSION}" \
+            "checkov==${CHECKOV_VERSION}" \
+            "zizmor==${ZIZMOR_VERSION}"
+
+      - name: Gitleaks (full git history)
+        shell: bash
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Eliminamos 'args' porque esta acción lo maneja internamente o vía config file
+        run: |
+          mkdir -p "$KUVULN_RAW"
+          gitleaks git . --report-format sarif --report-path "$KUVULN_RAW/gitleaks.sarif" --exit-code 0 --redact --no-banner --log-level warn
 
-      - name: 3. Full Repo Audit (Trivy)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
+      - name: Trivy filesystem scan
+        shell: bash
+        continue-on-error: true
+        run: |
+          trivy fs --scanners vuln,secret,license --format sarif --output "$KUVULN_RAW/trivy.sarif" --severity CRITICAL,HIGH,MEDIUM,LOW --no-progress --exit-code 0 --skip-dirs .git,node_modules,vendor,.venv,tests/fixtures,kuvuln-out,kuvuln-rendered,kuvuln-results .
+          trivy config --format sarif --output "$KUVULN_RAW/trivy-config.sarif" --severity CRITICAL,HIGH,MEDIUM,LOW --no-progress --exit-code 0 --skip-dirs .git,node_modules,vendor,.venv,tests/fixtures,kuvuln-out,kuvuln-rendered,kuvuln-results .
 
-      - name: 4. Static Analysis (Semgrep)
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/secrets
-            p/kubernetes
-        # Eliminamos 'generateSarif' porque en v1 se activa de otra forma o es automático al detectar entorno GitHub
+      - name: Kube-linter
+        shell: bash
+        continue-on-error: true
+        run: |
+          kube-linter lint . --format sarif --output "$KUVULN_RAW/kube-linter.sarif" || true
 
-      - name: 5. Upload Reports to Security Tab
-        uses: github/codeql-action/upload-sarif@v4  # Actualizado a v4 para evitar el warning de depreciación
+      - name: Kubescape (NSA/CISA/MITRE)
+        shell: bash
+        continue-on-error: true
+        env:
+          KUBESCAPE_VERSION: ${{ env.KUBESCAPE_VERSION }}
+        run: |
+          curl -sSfL "https://github.com/kubescape/kubescape/releases/download/v${KUBESCAPE_VERSION}/kubescape_${KUBESCAPE_VERSION}_linux_amd64.tar.gz" -o /tmp/kubescape.tar.gz
+          echo "71ed716b13487a6fa5750af6b191ee7fd51eb0b31809ea5994a696b1f36f874  /tmp/kubescape.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/kubescape.tar.gz -C /tmp kubescape
+          sudo mv /tmp/kubescape /usr/local/bin/kubescape
+          kubescape scan framework nsa . --format sarif --output "$KUVULN_RAW/kubescape.sarif" --keep-local --exclude-namespaces kube-system,kube-public,kube-node-lease || true
+
+      - name: Render Helm and Kustomize
+        shell: bash
+        continue-on-error: true
+        run: |
+          mkdir -p "$KUVULN_RENDERED"
+          mapfile -t CHARTS < <(find . -name Chart.yaml -not -path './.git/*' -not -path './vendor/*' | sed 's|/Chart.yaml||' | sort -u | head -10)
+          i=0
+          for chart in "${CHARTS[@]}"; do
+            helm template kuvuln "$chart" --include-crds --namespace kuvuln > "$KUVULN_RENDERED/helm-$i.yaml" 2>/dev/null || true
+            i=$((i+1))
+          done
+          mapfile -t KDIRS < <(find . \( -name kustomization.yaml -o -name kustomization.yml \) -not -path './.git/*' -not -path './vendor/*' | xargs -n1 dirname | sort -u | head -10)
+          j=0
+          for dir in "${KDIRS[@]}"; do
+            kustomize build "$dir" > "$KUVULN_RENDERED/kustomize-$j.yaml" 2>/dev/null || true
+            j=$((j+1))
+          done
+
+      - name: Semgrep
+        shell: bash
+        continue-on-error: true
+        run: |
+          semgrep scan \
+            --config .kuvuln/rules \
+            --config p/security-audit \
+            --config p/secrets \
+            --config p/kubernetes \
+            --config p/dockerfile \
+            --config p/golang \
+            --config p/github-actions \
+            --sarif --output "$KUVULN_RAW/semgrep.sarif" \
+            --metrics off --disable-version-check --quiet . || true
+
+      - name: gosec
+        shell: bash
+        continue-on-error: true
+        run: |
+          gosec -no-fail -fmt sarif -out "$KUVULN_RAW/gosec.sarif" ./... || true
+
+      - name: govulncheck and go list
+        shell: bash
+        continue-on-error: true
+        run: |
+          mapfile -t GOMODS < <(find . -name go.mod -not -path './vendor/*' -not -path '*/staging/*' -not -path './.git/*' | xargs -n1 dirname | sort -u | head -8)
+          for dir in "${GOMODS[@]}"; do
+            (cd "$dir" && go list -m -json all) >> "$KUVULN_RAW/data/gomodules.json" 2>/dev/null || true
+            (cd "$dir" && govulncheck -json ./...) >> "$KUVULN_RAW/data/govulncheck.json" 2>/dev/null || true
+          done
+
+      - name: Checkov
+        shell: bash
+        continue-on-error: true
+        run: |
+          checkov -d . \
+            --framework kubernetes,dockerfile,terraform,cloudformation,github_actions,helm,kustomize \
+            --output sarif --output-file-path "$KUVULN_RAW/checkov" \
+            --soft-fail --compact \
+            --skip-path tests/fixtures --skip-path kuvuln-out --skip-path kuvuln-rendered --skip-path kuvuln-results || true
+
+      - name: zizmor (GitHub Actions security)
+        shell: bash
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          zizmor --format sarif .github/workflows > "$KUVULN_RAW/zizmor.sarif" 2>/dev/null || true
+
+      - name: Container image scan
+        shell: bash
+        continue-on-error: true
+        env:
+          KUVULN_SKIP_CONTAINER: ${{ steps.options.outputs.skip_container }}
+        run: |
+          if [ "${KUVULN_SKIP_CONTAINER:-false}" = "true" ]; then
+            echo "Container image scanning skipped"
+            exit 0
+          fi
+          mapfile -t IMAGES < <(python -m kuvuln images --root . --format lines | sort -u | head -10)
+          i=0
+          for image in "${IMAGES[@]}"; do
+            trivy image --scanners vuln --format sarif --output "$KUVULN_RAW/container-$i.sarif" --severity CRITICAL,HIGH,MEDIUM,LOW --no-progress --exit-code 0 --timeout 5m "$image" || true
+            i=$((i+1))
+          done
+
+      - name: KuVuln analysis
+        id: kuvuln
+        continue-on-error: true
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          ARGS=(--root . --config "$KUVULN_CONFIG" --input "$KUVULN_RAW" --input "$KUVULN_RENDERED" --output "$KUVULN_OUT" --format all --step-summary)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ARGS+=(--pr-comment)
+          fi
+          if [ -n "${{ steps.options.outputs.fail_on }}" ]; then
+            ARGS+=(--fail-on "${{ steps.options.outputs.fail_on }}")
+          fi
+          if [ "${{ steps.options.outputs.offline }}" = "true" ]; then
+            ARGS+=(--offline)
+          fi
+          if [ -f .kuvuln-baseline.json ]; then
+            ARGS+=(--baseline .kuvuln-baseline.json)
+          fi
+          python -m kuvuln scan "${ARGS[@]}"
+
+      - name: Upload KuVuln SARIF
         if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
-          # Subimos la carpeta actual; GitHub buscará todos los archivos .sarif generados
-          sarif_file: '.' 
+          sarif_file: ${{ env.KUVULN_OUT }}/kuvuln.sarif
+          category: kuvuln
 
-      - name: 6. KuVuln Feedback
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const output = `### 🤖 KuVuln Analysis Report
-            #### Security Status: Checked
-            - **Secrets:** Verified ✅
-            - **Dependencies:** Audited 📦
-            - **Infrastructure (K8s/Docker):** Scanned 🛡️
-            
-            *Check the **Security** tab for detailed line-by-line fixes.*`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
-
-      - name: 7. Archive Security Report
+      - name: Upload raw scanner SARIFs
         if: always()
-        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          sarif_file: ${{ env.KUVULN_RAW }}
+          category: kuvuln-raw
+
+      - name: Archive reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: kuvuln-security-report
-          path: "*.sarif"
+          path: |
+            ${{ env.KUVULN_OUT }}/**
+            ${{ env.KUVULN_RAW }}/**
+            ${{ env.KUVULN_RENDERED }}/**
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Policy gate
+        if: steps.kuvuln.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::error::KuVuln policy gate failed. See the Security tab and the kuvuln-security-report artifact."
+          exit 1

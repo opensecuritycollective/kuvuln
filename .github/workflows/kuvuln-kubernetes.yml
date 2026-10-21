@@ -1,0 +1,46 @@
+name: KuVuln - Kubernetes/kubernetes
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or tag of kubernetes/kubernetes to scan"
+        required: false
+        type: string
+        default: "master"
+      fail_on:
+        description: "Override fail_on_severity"
+        type: choice
+        options: [\"CRITICAL\", \"HIGH\", \"MEDIUM\", \"LOW\", \"NONE\"]
+        default: HIGH
+      offline:
+        description: "Run without network access"
+        type: boolean
+        default: false
+      skip_container:
+        description: "Skip container image scanning (recommended for the first run)"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 3 * * 0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kuvuln-kubernetes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Scan kubernetes/kubernetes
+    uses: ./.github/workflows/kuvuln.yml
+    timeout-minutes: 120
+    with:
+      repository: kubernetes/kubernetes
+      ref: ${{ inputs.ref || 'master' }}
+      fail_on: ${{ inputs.fail_on || 'HIGH' }}
+      offline: ${{ inputs.offline || false }}
+      skip_container: ${{ inputs.skip_container || true }}
+      config_path: kuvuln-config.json
+    secrets: inherit

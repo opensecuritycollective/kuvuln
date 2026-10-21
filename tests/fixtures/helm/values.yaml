@@ -1,0 +1,9 @@
+replicaCount: 1
+image:
+  repository: nginx
+  tag: latest
+database:
+  password: "supersecret"
+  host: db.internal
+monitoring:
+  enabled: true

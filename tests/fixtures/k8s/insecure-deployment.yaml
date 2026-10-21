@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-demo
+  namespace: demo
+  labels:
+    app: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+    spec:
+      hostNetwork: true
+      automountServiceAccountToken: true
+      containers:
+        - name: app
+          image: nginx:latest
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+            runAsNonRoot: false
+            capabilities:
+              add: ["SYS_ADMIN"]
+          env:
+            - name: DB_PASSWORD
+              value: "supersecret"
+          resources: {}
+        - name: sidecar
+          image: registry.k8s.io/pause:3.9
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock

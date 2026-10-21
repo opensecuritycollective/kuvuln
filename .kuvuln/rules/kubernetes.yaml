@@ -1,0 +1,161 @@
+rules:
+  - id: kuvuln-k8s-privileged-container
+    languages: [generic]
+    message: "Kubernetes container runs with privileged: true"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-250"]
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'privileged:\s*true'
+
+  - id: kuvuln-k8s-allow-privilege-escalation
+    languages: [generic]
+    message: "Kubernetes container allows privilege escalation"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-250"]
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'allowPrivilegeEscalation:\s*true'
+
+  - id: kuvuln-k8s-run-as-root
+    languages: [generic]
+    message: "Kubernetes workload explicitly runs as root"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-250"]
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'runAsUser:\s*0(?!\d)'
+
+  - id: kuvuln-k8s-host-namespaces
+    languages: [generic]
+    message: "Kubernetes workload shares a host namespace"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-250"]
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'host(Network|PID|IPC):\s*true'
+
+  - id: kuvuln-k8s-hostpath-docker-socket
+    languages: [generic]
+    message: "Kubernetes workload mounts the Docker socket"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-250"]
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'path:\s*/var/run/docker\.sock'
+
+  - id: kuvuln-k8s-unsafe-image-tag
+    languages: [generic]
+    message: "Kubernetes workload uses a mutable image tag"
+    severity: WARNING
+    metadata:
+      category: security
+      confidence: MEDIUM
+      impact: MEDIUM
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'image:\s*[''\"]?[^\s''\"]+:latest'
+
+  - id: kuvuln-k8s-unconfined-seccomp
+    languages: [generic]
+    message: "Kubernetes workload disables seccomp"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: MEDIUM
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'seccompProfile:[\s\S]{0,120}type:\s*Unconfined'
+
+  - id: kuvuln-k8s-sys-admin-capability
+    languages: [generic]
+    message: "Kubernetes workload adds the SYS_ADMIN capability"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-250"]
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'add:\s*\[[^\]]*SYS_ADMIN'
+
+  - id: kuvuln-k8s-webhook-failure-ignore
+    languages: [generic]
+    message: "Admission webhook uses failurePolicy: Ignore"
+    severity: WARNING
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: MEDIUM
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'failurePolicy:\s*Ignore'
+
+  - id: kuvuln-k8s-kubelet-anonymous
+    languages: [generic]
+    message: "Kubelet anonymous authentication is enabled"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: CRITICAL
+      cwe: ["CWE-287"]
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: 'anonymous:[\s\S]{0,80}enabled:\s*true'
+
+  - id: kuvuln-k8s-apiserver-insecure-flags
+    languages: [generic]
+    message: "Kubernetes control-plane component uses an insecure flag"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: CRITICAL
+      technology: [kubernetes]
+    paths:
+      include: ["**/*.yaml", "**/*.yml"]
+    patterns:
+      - pattern-regex: '--(anonymous-auth=true|authorization-mode=AlwaysAllow|disable-admission-plugins=[^\s]*PodSecurity)'

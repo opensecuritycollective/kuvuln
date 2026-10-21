@@ -1,0 +1,63 @@
+# KuVuln unit and integration tests
+name: KuVuln tests
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kuvuln-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Python tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install KuVuln
+        run: pip install --disable-pip-version-check --no-cache-dir .
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate Semgrep rules
+        run: |
+          pip install --disable-pip-version-check --no-cache-dir "semgrep==1.182.0"
+          semgrep --config .kuvuln/rules --validate --metrics off
+
+      - name: Self scan (offline)
+        run: |
+          python -m kuvuln scan \
+            --root . \
+            --config kuvuln-config.json \
+            --output .kuvuln-out \
+            --offline \
+            --format json,sarif,markdown \
+            --step-summary || true
+
+      - name: Upload self-scan report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kuvuln-self-scan
+          path: .kuvuln-out/**
+          if-no-files-found: ignore
+          retention-days: 7

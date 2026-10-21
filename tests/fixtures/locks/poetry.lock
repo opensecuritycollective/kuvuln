@@ -1,0 +1,13 @@
+[[package]]
+name = "django"
+version = "4.2.0"
+description = "A high-level Python web framework."
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
+name = "pytest"
+version = "8.0.0"
+category = "dev"
+optional = false

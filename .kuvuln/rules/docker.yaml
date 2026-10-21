@@ -1,0 +1,89 @@
+rules:
+  - id: kuvuln-docker-user-root
+    languages: [generic]
+    message: "Dockerfile leaves the container running as root"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-250"]
+      technology: [docker]
+    paths:
+      include: ["**/Dockerfile", "**/Dockerfile.*", "**/*.Dockerfile", "**/Containerfile", "**/*.Containerfile"]
+    patterns:
+      - pattern-regex: '(?m)^\s*USER\s+root\s*$'
+
+  - id: kuvuln-docker-latest-tag
+    languages: [generic]
+    message: "Dockerfile uses a mutable :latest base image"
+    severity: WARNING
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: MEDIUM
+      technology: [docker]
+    paths:
+      include: ["**/Dockerfile", "**/Dockerfile.*", "**/*.Dockerfile", "**/Containerfile", "**/*.Containerfile"]
+    patterns:
+      - pattern-regex: 'FROM\s+[^\s]+:latest'
+
+  - id: kuvuln-docker-remote-add
+    languages: [generic]
+    message: "Dockerfile downloads a remote archive with ADD"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: MEDIUM
+      cwe: ["CWE-494"]
+      technology: [docker]
+    paths:
+      include: ["**/Dockerfile", "**/Dockerfile.*", "**/*.Dockerfile", "**/Containerfile", "**/*.Containerfile"]
+    patterns:
+      - pattern-regex: 'ADD\s+https?://'
+
+  - id: kuvuln-docker-curl-pipe-shell
+    languages: [generic]
+    message: "Dockerfile pipes a remote script into a shell"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: MEDIUM
+      impact: HIGH
+      cwe: ["CWE-494"]
+      technology: [docker]
+    paths:
+      include: ["**/Dockerfile", "**/Dockerfile.*", "**/*.Dockerfile", "**/Containerfile", "**/*.Containerfile"]
+    patterns:
+      - pattern-regex: 'curl[^\n|]*\|\s*(ba|z|k)?sh'
+
+  - id: kuvuln-docker-env-secret
+    languages: [generic]
+    message: "Dockerfile stores a credential in an environment variable"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: MEDIUM
+      impact: HIGH
+      cwe: ["CWE-798"]
+      technology: [docker]
+    paths:
+      include: ["**/Dockerfile", "**/Dockerfile.*", "**/*.Dockerfile", "**/Containerfile", "**/*.Containerfile"]
+    patterns:
+      - pattern-regex: '(?i)ENV\s+[A-Za-z0-9_]*(PASSWORD|SECRET|TOKEN|API_KEY|ACCESS_KEY|PRIVATE_KEY)'
+
+  - id: kuvuln-docker-world-writable
+    languages: [generic]
+    message: "Dockerfile sets world-writable permissions"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: MEDIUM
+      cwe: ["CWE-732"]
+      technology: [docker]
+    paths:
+      include: ["**/Dockerfile", "**/Dockerfile.*", "**/*.Dockerfile", "**/Containerfile", "**/*.Containerfile"]
+    patterns:
+      - pattern-regex: 'chmod\s+(777|a\+rwx)'

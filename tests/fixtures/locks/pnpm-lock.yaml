@@ -1,0 +1,12 @@
+lockfileVersion: '9.0'
+
+packages:
+
+  '@babel/code-frame@7.24.7':
+    resolution: {integrity: sha512-b123}
+
+  lodash@4.17.20:
+    resolution: {integrity: sha512-abc}
+
+  express@4.21.0(react@18.2.0):
+    resolution: {integrity: sha512-def}

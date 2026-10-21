@@ -1,0 +1,17 @@
+# This file is maintained automatically by "flutter pub".
+# It should not be edited by hand.
+
+packages:
+  http:
+    dependency: "direct main"
+    description:
+      name: http
+      sha256: abc
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.0"
+  flutter:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"

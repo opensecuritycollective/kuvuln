@@ -1,0 +1,98 @@
+name: KuVuln Security Scan
+description: >-
+  Kubernetes-native security analysis for manifests, Helm, Kustomize, Go modules
+  and container images. Produces unified SARIF, Markdown/HTML reports and a
+  CycloneDX SBOM.
+author: bleon-ethical
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  config:
+    description: Path to kuvuln-config.json
+    required: false
+    default: kuvuln-config.json
+  root:
+    description: Repository root to scan
+    required: false
+    default: "."
+  output:
+    description: Output directory for reports and SBOM
+    required: false
+    default: kuvuln-out
+  format:
+    description: Comma-separated formats (json,markdown,html,sarif,sbom,all)
+    required: false
+    default: all
+  fail-on:
+    description: Override fail_on_severity (CRITICAL/HIGH/MEDIUM/LOW/NONE)
+    required: false
+    default: ""
+  offline:
+    description: Disable network access
+    required: false
+    default: "false"
+  baseline:
+    description: Baseline JSON file used to suppress accepted findings
+    required: false
+    default: ""
+  pr-comment:
+    description: Post/update a sticky pull request comment
+    required: false
+    default: "false"
+  pr-number:
+    description: Pull request number (defaults to the event PR)
+    required: false
+    default: ""
+  extra-args:
+    description: Additional arguments passed to kuvuln scan
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: "3.12"
+
+    - name: Install KuVuln
+      shell: bash
+      run: pip install --disable-pip-version-check --no-cache-dir "${{ github.action_path }}"
+
+    - name: Run KuVuln
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        ARGS=(
+          --root "${{ inputs.root }}"
+          --config "${{ inputs.config }}"
+          --output "${{ inputs.output }}"
+          --format "${{ inputs.format }}"
+          --step-summary
+        )
+        if [ -n "${{ inputs.fail-on }}" ]; then
+          ARGS+=(--fail-on "${{ inputs.fail-on }}")
+        fi
+        if [ "${{ inputs.offline }}" = "true" ]; then
+          ARGS+=(--offline)
+        fi
+        if [ -n "${{ inputs.baseline }}" ]; then
+          ARGS+=(--baseline "${{ inputs.baseline }}")
+        fi
+        if [ "${{ inputs.pr-comment }}" = "true" ]; then
+          ARGS+=(--pr-comment)
+          if [ -n "${{ inputs.pr-number }}" ]; then
+            ARGS+=(--pr-number "${{ inputs.pr-number }}")
+          fi
+        fi
+        if [ -n "${{ inputs.extra-args }}" ]; then
+          read -r -a EXTRA <<< "${{ inputs.extra-args }}"
+          ARGS+=("${EXTRA[@]}")
+        fi
+        python -m kuvuln scan "${ARGS[@]}"

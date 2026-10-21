@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: demo
+resources:
+  - github.com/example/base//k8s?ref=v1.2.3
+  - https://example.com/base.yaml
+  - deployment.yaml
+secretGenerator:
+  - name: app-secrets
+    literals:
+      - DB_PASSWORD=supersecret
+images:
+  - name: nginx
+    newTag: latest
+helmCharts:
+  - name: redis
+    repo: http://charts.example.com

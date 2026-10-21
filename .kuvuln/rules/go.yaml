@@ -1,0 +1,75 @@
+rules:
+  - id: kuvuln-go-insecure-skip-verify
+    languages: [generic]
+    message: "Go TLS certificate verification is disabled"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-295"]
+      technology: [go]
+    paths:
+      include: ["**/*.go"]
+    patterns:
+      - pattern-regex: 'InsecureSkipVerify:\s*true'
+
+  - id: kuvuln-go-weak-crypto
+    languages: [generic]
+    message: "Go code uses a broken cryptographic primitive"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      impact: HIGH
+      cwe: ["CWE-327"]
+      technology: [go]
+    paths:
+      include: ["**/*.go"]
+    patterns:
+      - pattern-regex: '(md5\.New\(|sha1\.New\(|des\.NewCipher|rc4\.NewCipher)'
+
+  - id: kuvuln-go-command-injection
+    languages: [generic]
+    message: "Go code concatenates input into an external command"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: MEDIUM
+      impact: HIGH
+      cwe: ["CWE-78"]
+      technology: [go]
+    paths:
+      include: ["**/*.go"]
+    patterns:
+      - pattern-regex: 'exec\.Command\([^\n]*\+'
+
+  - id: kuvuln-go-unsafe-html-template
+    languages: [generic]
+    message: "Go code marks untrusted data as safe HTML"
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: MEDIUM
+      impact: HIGH
+      cwe: ["CWE-79"]
+      technology: [go]
+    paths:
+      include: ["**/*.go"]
+    patterns:
+      - pattern-regex: 'template\.HTML\([^\n]*'
+
+  - id: kuvuln-go-math-rand-security
+    languages: [generic]
+    message: "Go security-sensitive code uses the non-cryptographic math/rand source"
+    severity: WARNING
+    metadata:
+      category: security
+      confidence: LOW
+      impact: MEDIUM
+      cwe: ["CWE-330"]
+      technology: [go]
+    paths:
+      include: ["**/*.go"]
+    patterns:
+      - pattern-regex: '(rand\.Intn\(|rand\.Int31n\(|rand\.Float64\()'

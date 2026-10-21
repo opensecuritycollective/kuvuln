@@ -1,0 +1,2 @@
+[console_scripts]
+kuvuln = kuvuln.cli:main

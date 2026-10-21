@@ -1,0 +1,3 @@
+{"Path":"github.com/gorilla/mux","Version":"v1.8.0","Indirect":false}
+{"Path":"golang.org/x/text","Version":"v0.4.0","Replace":{"Path":"github.com/example/text-fork","Version":"v0.4.0"},"Indirect":true}
+{"Path":"github.com/example/demo","Main":true}

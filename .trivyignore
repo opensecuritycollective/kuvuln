@@ -1,0 +1,5 @@
+# Test fixtures are intentionally insecure and excluded from the engine via
+# kuvuln-config.json; skipping them here avoids duplicate noise in raw reports.
+tests/fixtures/**
+kuvuln-rendered/**
+kuvuln-results/**

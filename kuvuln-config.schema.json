@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/bleon-ethical/kuvuln/kuvuln-config.schema.json",
+  "title": "KuVuln configuration",
+  "description": "Configuration for the KuVuln Kubernetes-native security bot.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "version": { "type": "string" },
+    "bot_name": { "type": "string" },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "fail_on_severity": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]
+        },
+        "fail_on_kev": { "type": "boolean" },
+        "fail_on_epss": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minimum_severity": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO", "UNKNOWN"]
+        },
+        "ignore_unfixed": { "type": "boolean" },
+        "max_allowed": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "baseline": { "type": ["string", "null"] },
+        "scan_targets": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "exclusions": {
+          "type": "object",
+          "properties": {
+            "directories": { "type": "array", "items": { "type": "string" } },
+            "paths": { "type": "array", "items": { "type": "string" } },
+            "vulnerabilities": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  { "type": "string" },
+                  {
+                    "type": "object",
+                    "required": ["id"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "reason": { "type": "string" },
+                      "expires": { "type": "string", "format": "date" }
+                    }
+                  }
+                ]
+              }
+            },
+            "rules": { "type": "array", "items": { "type": ["string", "object"] } },
+            "packages": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  { "type": "string" },
+                  {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "ecosystem": { "type": "string" },
+                      "version": { "type": "string" },
+                      "reason": { "type": "string" },
+                      "expires": { "type": "string", "format": "date" }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "sca": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "ecosystems": { "type": "array", "items": { "type": "string" } },
+        "include_dev": { "type": "boolean" },
+        "include_indirect": { "type": "boolean" },
+        "max_file_size_kb": { "type": "integer", "minimum": 64 },
+        "max_files": { "type": "integer", "minimum": 10 },
+        "osv_api": { "type": "string", "format": "uri" },
+        "ignore_packages": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "kubernetes": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "pod_security_standard": {
+          "type": "string",
+          "enum": ["restricted", "baseline", "off"]
+        },
+        "exclude_namespaces": { "type": "array", "items": { "type": "string" } },
+        "require_resource_limits": { "type": "boolean" },
+        "require_network_policy": { "type": "boolean" },
+        "require_image_digest": { "type": "boolean" },
+        "trusted_registries": { "type": "array", "items": { "type": "string" } },
+        "check_rbac": { "type": "boolean" },
+        "check_plaintext_secrets": { "type": "boolean" },
+        "check_admission_webhooks": { "type": "boolean" },
+        "check_removed_apis": { "type": "boolean" },
+        "check_control_plane_flags": { "type": "boolean" },
+        "check_kubelet_config": { "type": "boolean" },
+        "helm": { "type": "object" },
+        "kustomize": { "type": "object" }
+      }
+    },
+    "go": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "check_toolchain": { "type": "boolean" },
+        "check_replace_directives": { "type": "boolean" },
+        "minimum_version": { "type": ["string", "null"] }
+      }
+    },
+    "enrichment": {
+      "type": "object",
+      "properties": {
+        "epss": { "type": "boolean" },
+        "kev": { "type": "boolean" },
+        "lifecycle": { "type": "boolean" },
+        "offline": { "type": "boolean" },
+        "cache_ttl_hours": { "type": "number", "minimum": 0 },
+        "timeout_seconds": { "type": "integer", "minimum": 5 }
+      }
+    },
+    "license": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "deny": { "type": "array", "items": { "type": "string" } },
+        "exceptions": { "type": "array", "items": { "type": ["string", "object"] } },
+        "severity": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+        }
+      }
+    },
+    "notifications": {
+      "type": "object",
+      "properties": {
+        "github_pr_comments": { "type": "boolean" },
+        "security_tab_integration": { "type": "boolean" },
+        "summary_level": { "type": "string", "enum": ["quiet", "normal", "verbose"] },
+        "max_findings_in_comment": { "type": "integer", "minimum": 5 }
+      }
+    },
+    "compliance_standards": { "type": "array", "items": { "type": "string" } },
+    "advanced": {
+      "type": "object",
+      "properties": {
+        "deep_history_scan": { "type": "boolean" },
+        "ignore_unfixed": { "type": "boolean" },
+        "license_check": { "type": "boolean" },
+        "offline": { "type": "boolean" }
+      }
+    }
+  }
+}

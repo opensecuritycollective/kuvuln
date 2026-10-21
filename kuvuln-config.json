@@ -1,29 +1,145 @@
 {
-  "version": "1.0.0",
+  "$schema": "./kuvuln-config.schema.json",
+  "version": "3.0.0",
   "bot_name": "KuVuln",
   "settings": {
     "fail_on_severity": "HIGH",
+    "fail_on_kev": true,
+    "fail_on_epss": 0.0,
+    "minimum_severity": "LOW",
+    "report_minimum_severity": "LOW",
+    "ignore_unfixed": false,
+    "max_allowed": {},
+    "baseline": null,
     "scan_targets": {
       "kubernetes": true,
-      "docker": true,
+      "rbac": true,
+      "network_policy": true,
+      "helm": true,
+      "kustomize": true,
+      "go": true,
       "dependencies": true,
+      "container": true,
+      "docker": true,
       "secrets": true,
-      "sast": true
+      "sast": true,
+      "licenses": true,
+      "lifecycle": true,
+      "ci": true
     },
     "exclusions": {
-      "directories": ["tests/**", "docs/**", "examples/**"],
-      "vulnerabilities": ["CVE-0000-0000"]
+      "directories": [
+        "tests/**",
+        "docs/**",
+        "examples/**",
+        "vendor/**",
+        "third_party/**",
+        "kuvuln-rendered/**",
+        "kuvuln-results/**",
+        "kuvuln-out/**"
+      ],
+      "paths": [],
+      "vulnerabilities": [],
+      "rules": [],
+      "packages": []
     }
+  },
+  "sca": {
+    "enabled": true,
+    "ecosystems": [
+      "npm",
+      "PyPI",
+      "Go",
+      "crates.io",
+      "Maven",
+      "Packagist",
+      "RubyGems",
+      "NuGet",
+      "Pub",
+      "Hex"
+    ],
+    "include_dev": true,
+    "include_indirect": true,
+    "max_file_size_kb": 8192,
+    "max_files": 5000,
+    "osv_api": "https://api.osv.dev",
+    "timeout_seconds": 20,
+    "retries": 3,
+    "ignore_packages": [],
+    "go": {
+      "use_go_list": true,
+      "include_vendor": true,
+      "check_replace_directives": true
+    }
+  },
+  "kubernetes": {
+    "enabled": true,
+    "pod_security_standard": "restricted",
+    "exclude_namespaces": ["kube-system", "kube-public", "kube-node-lease"],
+    "require_resource_limits": true,
+    "require_network_policy": true,
+    "require_image_digest": false,
+    "trusted_registries": [],
+    "check_plaintext_secrets": true,
+    "check_rbac": true,
+    "check_admission_webhooks": true,
+    "check_removed_apis": true,
+    "check_control_plane_flags": true,
+    "check_kubelet_config": true,
+    "max_file_size_kb": 4096,
+    "helm": {
+      "enabled": true,
+      "check_values_secrets": true,
+      "check_dependencies": true
+    },
+    "kustomize": {
+      "enabled": true,
+      "forbid_unpinned_remote_resources": true,
+      "forbid_secret_generator": true
+    }
+  },
+  "go": {
+    "enabled": true,
+    "check_toolchain": true,
+    "check_replace_directives": true,
+    "minimum_version": null
+  },
+  "enrichment": {
+    "epss": true,
+    "kev": true,
+    "lifecycle": true,
+    "offline": false,
+    "cache_ttl_hours": 24,
+    "timeout_seconds": 20
+  },
+  "lifecycle": {
+    "enabled": true,
+    "online": true,
+    "products": ["kubernetes", "go"]
+  },
+  "license": {
+    "enabled": true,
+    "deny": [
+      "AGPL-3.0-only",
+      "AGPL-3.0-or-later",
+      "SSPL-1.0",
+      "BUSL-1.1"
+    ],
+    "exceptions": [],
+    "severity": "HIGH"
   },
   "notifications": {
     "github_pr_comments": true,
     "security_tab_integration": true,
-    "summary_level": "verbose"
+    "summary_level": "verbose",
+    "max_findings_in_comment": 25
   },
-  "compliance_standards": ["CIS-Benchmark", "NSA-CISA-Hardening"],
+  "compliance_standards": ["PSS-restricted", "CIS-Kubernetes", "NSA-CISA"],
   "advanced": {
     "deep_history_scan": true,
     "ignore_unfixed": false,
-    "license_check": true
+    "license_check": true,
+    "offline": false,
+    "max_findings_in_comment": 25
   }
 }

@@ -1,0 +1,18 @@
+title = "KuVuln gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  '''tests/fixtures/.*''',
+  '''kuvuln-rendered/.*''',
+  '''insecure\.yaml''',
+  '''\.kuvuln-baseline\.json''',
+]
+regexes = [
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''supersecret''',
+  '''admin12345''',
+  '''c3VwZXJzZWNyZXQ=''',
+]
