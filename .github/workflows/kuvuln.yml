@@ -134,12 +134,21 @@ jobs:
       KUVULN_OUT: /tmp/kuvuln-out
       KUVULN_RENDERED: /tmp/kuvuln-rendered
     steps:
-      - name: Checkout
+      - name: Checkout repository to scan
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ env.KUVULN_REPOSITORY }}
           ref: ${{ env.KUVULN_REF }}
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout KuVuln engine
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: bleon-ethical/kuvuln
+          ref: main
+          path: kuvuln-engine
+          fetch-depth: 1
           persist-credentials: false
 
       - name: Setup Python
@@ -180,11 +189,14 @@ jobs:
 
       - name: Install KuVuln
         shell: bash
-        run: pip install --disable-pip-version-check --no-cache-dir .
+        run: pip install --disable-pip-version-check --no-cache-dir ./kuvuln-engine
 
       - name: Ensure configuration
         shell: bash
         run: |
+          if [ ! -f "$KUVULN_CONFIG" ] && [ -f kuvuln-engine/kuvuln-config.json ]; then
+            cp kuvuln-engine/kuvuln-config.json "$KUVULN_CONFIG"
+          fi
           if [ ! -f "$KUVULN_CONFIG" ]; then
             curl -sSfL "https://raw.githubusercontent.com/bleon-ethical/kuvuln/main/kuvuln-config.json" -o "$KUVULN_CONFIG" || true
           fi
