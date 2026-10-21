@@ -23,14 +23,6 @@ and enforces a policy-as-code gate.
 
 Or use the composite action:
 
-```yaml
-- uses: bleon-ethical/kuvuln@v3
-  with:
-    config: kuvuln-config.json
-    fail-on: HIGH
-    pr-comment: "true"
-```
-
 Detailed configuration lives in [`docs/configuration.md`](docs/configuration.md).
 
 ---
