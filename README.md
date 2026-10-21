@@ -183,8 +183,6 @@ See [`SECURITY.md`](SECURITY.md) for reporting vulnerabilities in KuVuln.
 
 ---
 
-## ☸️ Scanning `kubernetes/kubernetes`\n\nKuVuln ships a dedicated workflow (`.github/workflows/kuvuln-kubernetes.yml`) that\nchecks out `kubernetes/kubernetes` and runs the complete engine against it:\n\n```bash\n# Trigger manually from the Actions tab, or wait for the weekly schedule\ngh workflow run kuvuln-kubernetes.yml \\\n  --ref main \\\n  -f ref=master \\\n  -f fail_on=HIGH \\\n  -f skip_container=true\n```\n\nThe reusable workflow (`.github/workflows/kuvuln.yml`) accepts a `repository`\ninput, so any organisation can scan its own Kubernetes components repository\nwith the same engine:\n\n```yaml\njobs:\n  scan:\n    uses: bleon-ethical/kuvuln/.github/workflows/kuvuln.yml@main\n    with:\n      repository: my-org/my-kubernetes-fork\n      ref: main\n      fail_on: HIGH\n      skip_container: true\n    secrets: inherit\n```\n\n---\n\n## 📚 Documentation
-
 - [Configuration reference](docs/configuration.md)
 - [Native rule catalog](docs/rules.md)
 
