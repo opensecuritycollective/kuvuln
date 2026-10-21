@@ -128,7 +128,7 @@ jobs:
       actions: read
     env:
       KUVULN_REPOSITORY: ${{ inputs.repository || github.repository }}
-      KUVULN_REF: ${{ inputs.ref || github.ref }}
+      KUVULN_REF: ${{ inputs.ref }}
       KUVULN_CONFIG: ${{ inputs.config_path || 'kuvuln-config.json' }}
       KUVULN_RAW: /tmp/kuvuln-results
       KUVULN_OUT: /tmp/kuvuln-out

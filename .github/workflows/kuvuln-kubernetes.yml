@@ -37,7 +37,7 @@ jobs:
     uses: ./.github/workflows/kuvuln.yml
     with:
       repository: kubernetes/kubernetes
-      ref: ${{ inputs.ref || 'master' }}
+      ref: ${{ inputs.ref }}
       fail_on: ${{ inputs.fail_on || 'HIGH' }}
       offline: ${{ inputs.offline || false }}
       skip_container: ${{ inputs.skip_container || true }}
