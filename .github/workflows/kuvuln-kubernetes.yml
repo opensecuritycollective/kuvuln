@@ -26,6 +26,9 @@ on:
 
 permissions:
   contents: read
+  security-events: write
+  pull-requests: write
+  actions: read
 
 concurrency:
   group: kuvuln-kubernetes-${{ github.ref }}

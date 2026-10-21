@@ -64,7 +64,7 @@ def ingest_sarif(path: str | Path, root: str | Path = ".") -> SarifReport:
     path = Path(path)
     rel = normalize_path(_relative(path, root))
     try:
-        payload = json.loads(read_text(path, max_bytes=20 * 1024 * 1024))
+        payload = json.loads(read_text(path, max_bytes=100 * 1024 * 1024))
     except json.JSONDecodeError as exc:
         return SarifReport([], [], [f"{rel}: invalid SARIF ({exc})"])
     if not isinstance(payload, dict):

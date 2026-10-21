@@ -75,7 +75,7 @@ permissions:
 
 concurrency:
   group: kuvuln-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   KUVULN_REPOSITORY: ${{ inputs.repository || github.repository }}
@@ -262,6 +262,30 @@ jobs:
           mkdir -p "$KUVULN_RAW"
           gitleaks git . --report-format sarif --report-path "$KUVULN_RAW/gitleaks.sarif" --exit-code 0 --redact --no-banner --log-level warn
 
+      - name: Normalize Gitleaks SARIF
+        shell: bash
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("/tmp/kuvuln-results/gitleaks.sarif")
+          if not path.exists():
+              raise SystemExit(0)
+          data = json.loads(path.read_text(encoding="utf-8"))
+          for run in data.get("runs", []):
+              for result in run.get("results", []):
+                  for location in result.get("locations", []):
+                      region = location.get("physicalLocation", {}).get("region", {})
+                      for key in ("startColumn", "endColumn"):
+                          value = region.get(key)
+                          if isinstance(value, int) and value < 1:
+                              region[key] = 1
+                      if not isinstance(region.get("startLine"), int) or region.get("startLine", 0) < 1:
+                          region["startLine"] = 1
+          path.write_text(json.dumps(data), encoding="utf-8")
+          PY
+
       - name: Trivy filesystem scan
         shell: bash
         continue-on-error: true
@@ -395,7 +419,7 @@ jobs:
           python -m kuvuln scan "${ARGS[@]}"
 
       - name: Upload KuVuln SARIF
-        if: always()
+        if: always() && hashFiles('${{ env.KUVULN_OUT }}/kuvuln.sarif') != ''
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
