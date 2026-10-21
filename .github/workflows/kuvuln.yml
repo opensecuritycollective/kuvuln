@@ -130,9 +130,9 @@ jobs:
       KUVULN_REPOSITORY: ${{ inputs.repository || github.repository }}
       KUVULN_REF: ${{ inputs.ref || github.ref }}
       KUVULN_CONFIG: ${{ inputs.config_path || 'kuvuln-config.json' }}
-      KUVULN_RAW: ${{ runner.temp }}/kuvuln-results
-      KUVULN_OUT: ${{ runner.temp }}/kuvuln-out
-      KUVULN_RENDERED: ${{ runner.temp }}/kuvuln-rendered
+      KUVULN_RAW: /tmp/kuvuln-results
+      KUVULN_OUT: /tmp/kuvuln-out
+      KUVULN_RENDERED: /tmp/kuvuln-rendered
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
