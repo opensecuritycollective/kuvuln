@@ -207,6 +207,7 @@ jobs:
       - name: Install scanning tools
         shell: bash
         env:
+          GOTOOLCHAIN: auto
           TRIVY_VERSION: ${{ env.TRIVY_VERSION }}
           GITLEAKS_VERSION: ${{ env.GITLEAKS_VERSION }}
           KUBE_LINTER_VERSION: ${{ env.KUBE_LINTER_VERSION }}
